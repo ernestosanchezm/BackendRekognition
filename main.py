@@ -22,8 +22,8 @@ def prediccion(f):
     #CONFIGURAR LOS ACCESOS
      client=boto3.client('rekognition',
                     region_name='us-east-2',
-                    aws_access_key_id="AKIA2GIV3UNTGU3P23WU",
-                    aws_secret_access_key="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"
+                    aws_access_key_id="AKIA6P46JAOPIR5NGNNC",
+                    aws_secret_access_key="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"
                     )     
      filename=secure_filename(f.filename)
      f.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))    
