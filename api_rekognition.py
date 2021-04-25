@@ -183,6 +183,7 @@ def GetUserForDni(dni):
         query = "select * from users u where u.dni="+dni
         cursor.execute(query)
         resBd=cursor.fetchall()         
+        
         if len(resBd)==1: 
             resBd={       
                 "error":False,
