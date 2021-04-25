@@ -22,8 +22,7 @@ app=Flask(__name__)
 app.config['UPLOAD_FOLDER_IMAGENES']="./Imagenes"
 app.config['UPLOAD_FOLDER_IMAGENES_RQST']="./ImagenesRQST"
 app.config['UPLOAD_FOLDER_VIDEOS']="./VideosData"
-
-
+                
 
 def Reconocimiento(f): 
     imagePaths = os.listdir(app.config['UPLOAD_FOLDER_IMAGENES'])
@@ -53,54 +52,45 @@ def Reconocimiento(f):
             cv2.putText(frame,'Desconocido',(x,y-20),2,0.8,(0,0,255),1,cv2.LINE_AA)
             cv2.rectangle(frame, (x,y),(x+w,y+h),(0,0,255),2)
     		
-        return (format(imagePaths[result[0]]))  
+        nombreUser=(GetUserForDni(str(format(imagePaths[result[0]]))))["nombre"]
+        return (nombreUser)  
         
-def prediccion(f):    
+def prediccion(f):   
+    
     #CONFIGURAR LOS ACCESOS
-      client=boto3.client('rekognition',
-                    region_name='us-east-2',
-                    aws_access_key_id="AKIA6P46JAOPIR5NGNNC",
-                    aws_secret_access_key="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"
-                    )     
-      filename=secure_filename(f.filename)
-      f.save(os.path.join(app.config['UPLOAD_FOLDER_IMAGENES_RQST'],filename))    
-      #Uso de AWS para la deteccion
-      response=client.detect_faces(
-          Image={'Bytes':f.getvalue()},  
-          Attributes=['ALL'])       
-      
-      mayor_confidence=0
-      _response=''
-      for element in response["FaceDetails"][0]["Emotions"]:
-          if element["Confidence"]>mayor_confidence:
-              mayor_confidence=element["Confidence"]   
-      
-      #CONECCION A MYSQL
-      db = mysql.connect(
-          host = "db-proyecto-mysql.cluster-cbwzye3glmch.us-east-1.rds.amazonaws.com",
-          user = "sa",
-          passwd = "luismiguel",
-          database = "educati"
-          )
-      cursor = db.cursor()
-      query = "SELECT * FROM users"
-      cursor.execute(query)
-      records = cursor.fetchall()      
-      for record in records:
-          print(record)
-              
-      for element in response["FaceDetails"][0]["Emotions"]:
-          if mayor_confidence==element["Confidence"]:
-              _response={
-                  "Security":element["Confidence"],
-                  "Emotion":element["Type"],
-                   "Adic":records
-                  }
-                  
-      return _response
+    client=boto3.client('rekognition',
+                  region_name='us-east-2',
+                  aws_access_key_id="AKIA6P46JAOPIR5NGNNC",
+                  aws_secret_access_key="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"
+                  )     
+    filename=secure_filename(f.filename)
+    f.save(os.path.join(app.config['UPLOAD_FOLDER_IMAGENES_RQST'],filename))    
+    #Uso de AWS para la deteccion
+    response=client.detect_faces(
+        Image={'Bytes':f.getvalue()},  
+        Attributes=['ALL'])       
+    
+    mayor_confidence=0
+    _response=''
+    for element in response["FaceDetails"][0]["Emotions"]:
+        if element["Confidence"]>mayor_confidence:
+            mayor_confidence=element["Confidence"]   
+            
+    for element in response["FaceDetails"][0]["Emotions"]:
+        if mayor_confidence==element["Confidence"]:
+            _response={
+                "Security":element["Confidence"],
+                "Emotion":element["Type"]              
+                }
+                
+    return _response
  
 def RegisterFaceUser(dni,f):    
+    objUser=GetUserForDni(dni)    
     
+    if objUser['error']==True:
+        return objUser['mensaje']         
+              
     dataPath = app.config['UPLOAD_FOLDER_IMAGENES']    
     personPath = dataPath + '/' + dni     
    
@@ -123,26 +113,107 @@ def RegisterFaceUser(dni,f):
      	frame =  imutils.resize(frame, width=640)
      	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
      	auxFrame = frame.copy()
-    
+         
      	faces = faceClassif.detectMultiScale(gray,1.3,5)
     
      	for (x,y,w,h) in faces:             
-             cv2.rectangle(frame, (x,y),(x+w,y+h),(0,255,0),2)
-             rostro = auxFrame[y:y+h,x:x+w]
-             rostro = cv2.resize(rostro,(150,150),interpolation=cv2.INTER_CUBIC)
-             cv2.imwrite(personPath + '/rotro_{}.jpg'.format(count),rostro)
-             count = count + 1
+              cv2.rectangle(frame, (x,y),(x+w,y+h),(0,255,0),2)
+              rostro = auxFrame[y:y+h,x:x+w]
+              rostro = cv2.resize(rostro,(150,150),interpolation=cv2.INTER_CUBIC)
+              cv2.imwrite(personPath + '/rotro_{}.jpg'.format(count),rostro)
+              count = count + 1
      	#cv2.imshow('frame',frame)
     
      	k =  cv2.waitKey(1)
      	if k == 27 or count >= 300:
-             break
+              break
     
     GenerarModelo()
-
+    return "Registro exitoso "+objUser['nombre']
     
+def GetUserForToken(token):
+    #CONECCION A MYSQL
+    db = mysql.connect(
+        host = "db-proyecto-mysql.cluster-cbwzye3glmch.us-east-1.rds.amazonaws.com",
+        user = "sa",
+        passwd = "luismiguel",
+        database = "educati"
+        )
+    resBd=[]
+    try:
+        cursor = db.cursor()
+        query = "select * from users u where u.token="+str(token)
+        cursor.execute(query)
+        resBd=cursor.fetchall()         
+        if len(resBd)==1: 
+            resBd={       
+                "error":False,
+                "mensaje":"Consulta exitosa",
+                "nombre":resBd[0][1],
+                "dni":resBd[0][4],
+                }            
+        else:
+            return {       
+                "error":True,
+                "mensaje":"No se encontraron registros o se encontraros multiples",
+                "nombre":None,
+                "dni":None,
+                }          
+    except:        
+        return {       
+                "error":True,
+                "mensaje":"Ocurrio un error inesperado",
+                "nombre":None,
+                "dni":None,
+                } 
+    
+    return resBd
 
+def GetUserForDni(dni):
+    #CONECCION A MYSQL
+    db = mysql.connect(
+        host = "db-proyecto-mysql.cluster-cbwzye3glmch.us-east-1.rds.amazonaws.com",
+        user = "sa",
+        passwd = "luismiguel",
+        database = "educati"
+        )
+    resBd=None
+    try:
+        cursor = db.cursor()
+        query = "select * from users u where u.dni="+dni
+        cursor.execute(query)
+        resBd=cursor.fetchall()         
+        if len(resBd)==1: 
+            resBd={       
+                "error":False,
+                "mensaje":"Consulta exitosa",
+                "nombre":resBd[0][1],
+                "dni":resBd[0][4],
+                }              
+        else:
+            return {       
+                "error":False,
+                "mensaje":"Se encontraron múltiples registros",
+                "nombre":None,
+                "dni":None,
+                }   
+            
+    except:        
+        return {       
+                "error":False,
+                "mensaje":"Ocurrio un error inesperado",
+                "nombre":None,
+                "dni":None,
+                }    
+    return resBd
 
+def ValidarToken(token):        
+    objUsuario=GetUserForToken(token)        
+    if objUsuario["error"]==True:
+        return False
+    
+    return True    
+    
 @app.route("/RegisterFaceStudent")
 def pagina_principal():   
     return render_template('formulario_registerFaceStudent.html')
@@ -153,9 +224,17 @@ def pagina_principal2():
 
 @app.route("/Predictor",methods=['POST'])
 def Predictor():    
-    if request.method=='POST':
+    if request.method=='POST':   
         f=request.files['archivo']       
-        #name=request.form['username']       
+        #name=request.form['username']   
+        token=request.headers.get('token')
+        #VALIDAR TOKEN
+        if ValidarToken(token)==False:
+            return {
+                'statusCode': 400,
+                'body': "Error de Autenticación"
+                } 
+        
         responseEmotion=prediccion(f)
         responseRekognition=Reconocimiento(f)
         response={
@@ -167,13 +246,22 @@ def Predictor():
             'statusCode': 200,
             'body': response 
         }      
-    
+
+
 @app.route("/Cargardata",methods=['POST'])
 def Cargardata():    
     if request.method=='POST':
         f=request.files['archivo']        
-        nombre=request.form['dni']
-        response=RegisterFaceUser(nombre,f)
+        dni=request.form['dni']
+        token=request.headers.get('token')
+        #VALIDAR TOKEN
+        if ValidarToken(token)==False:
+            return {
+                'statusCode': 400,
+                'body': "Error de Autenticación"
+                } 
+        
+        response=RegisterFaceUser(dni,f)
         #MOSTRAR LA RESPUESTA
         return {
             'statusCode': 200,
