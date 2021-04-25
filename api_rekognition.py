@@ -10,7 +10,7 @@ import boto3
 import io
 import cv2
 import imutils
-
+import mysql.connector as mysql
 from botocore.config import Config
 from flask import Flask,render_template,request
 from werkzeug.utils import secure_filename
@@ -73,12 +73,27 @@ def prediccion(f):
       for element in response["FaceDetails"][0]["Emotions"]:
           if element["Confidence"]>mayor_confidence:
               mayor_confidence=element["Confidence"]   
+      
+      #CONECCION A MYSQL
+      db = mysql.connect(
+          host = "db-proyecto-mysql.cluster-cbwzye3glmch.us-east-1.rds.amazonaws.com",
+          user = "sa",
+          passwd = "luismiguel",
+          database = "educati"
+          )
+      cursor = db.cursor()
+      query = "SELECT * FROM users"
+      cursor.execute(query)
+      records = cursor.fetchall()      
+      for record in records:
+          print(record)
               
       for element in response["FaceDetails"][0]["Emotions"]:
           if mayor_confidence==element["Confidence"]:
               _response={
                   "Security":element["Confidence"],
-                  "Emotion":element["Type"]
+                  "Emotion":element["Type"],
+                   "Adic":records
                   }
                   
       return _response
