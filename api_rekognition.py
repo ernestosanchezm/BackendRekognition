@@ -22,7 +22,8 @@ app=Flask(__name__)
 app.config['UPLOAD_FOLDER_IMAGENES']="./Imagenes"
 app.config['UPLOAD_FOLDER_IMAGENES_RQST']="./ImagenesRQST"
 app.config['UPLOAD_FOLDER_VIDEOS']="./VideosData"
-                
+
+área="simple"                
 
 def Reconocimiento(f): 
     imagePaths = os.listdir(app.config['UPLOAD_FOLDER_IMAGENES'])
