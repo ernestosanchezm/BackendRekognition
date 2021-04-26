@@ -26,7 +26,6 @@ app.config['UPLOAD_FOLDER_VIDEOS']="./VideosData"
          
 
 def Reconocimiento(f): 
-    área="xd"
     imagePaths = os.listdir(app.config['UPLOAD_FOLDER_IMAGENES'])
 
     face_recognizer = cv2.face.LBPHFaceRecognizer_create()
