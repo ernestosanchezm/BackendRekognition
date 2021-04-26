@@ -22,9 +22,11 @@ app=Flask(__name__)
 app.config['UPLOAD_FOLDER_IMAGENES']="./Imagenes"
 app.config['UPLOAD_FOLDER_IMAGENES_RQST']="./ImagenesRQST"
 app.config['UPLOAD_FOLDER_VIDEOS']="./VideosData"
-             
+    
+         
 
 def Reconocimiento(f): 
+    área="xd"
     imagePaths = os.listdir(app.config['UPLOAD_FOLDER_IMAGENES'])
 
     face_recognizer = cv2.face.LBPHFaceRecognizer_create()
