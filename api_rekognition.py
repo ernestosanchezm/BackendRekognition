@@ -403,10 +403,29 @@ def RegistroDataset():
         db.commit()
         db.close()    
         
+        response={}
+        for elem in res:
+            response={
+                'CONFUSED':res[0],
+                'ANGRY':res[1],
+                'DISGUSTED':res[2],
+                'SAD':res[3],
+                'CALM':res[4],
+                'SURPRISED':res[5],
+                'FEAR':res[6],
+                'HAPPY':res[7],
+                'EDAD':EDAD,
+                'NOMBRE':NOMBRE,
+                'CURSO':CURSO,
+                'SEXO':SEXO,
+                'NOTA':NOTA,
+                'RESULTADO':RESULTADO,
+                'GRADO':GRADO
+                }
         #MOSTRAR LA RESPUESTA
         return {
             'statusCode': 200,
-            'body':  res       
+            'body':  response       
         }      
 
 if __name__=='__main__':
