@@ -9,7 +9,7 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn.svm import LinearSVC
 from sklearn import metrics
 from ggplot import *
-
+from joblib import dump, load
 #-------------------------------------------------CONFIGURAR DATASET------------------------------------------------------------
 
 
@@ -17,7 +17,7 @@ traindata = []
 trainlabel=[]
 
 #ABRIR EL ARCHIVO
-f = open( 'bank.csv', 'rU' ) 
+f = open( 'Dataset.csv', 'rU' ) 
 for line in f:
     cells = line.split( ";" )
     
@@ -31,7 +31,7 @@ f.close()
 testdata = []
 testlabel=[]
 
-f = open( 'bank-full.csv', 'rU' ) #open the file in read universal mode
+f = open( 'Datatest.csv', 'rU' ) #open the file in read universal mode
 for line in f:
     cells = line.split( ";" )
     
@@ -64,15 +64,14 @@ def preprocess_label(file_name):
     #para no contar encabezado:	
 	for row in csvAns:  		
 		if ind==0:
-			ind+=1
-			continue
+ 			ind+=1
+ 			continue
 		#print row								
-		if row[0]=='yes' :
+		if row[0]=='Y' :
 			ans.append(1)
-		elif row[0]=='no' :
+		elif row[0]=='N' :
 			ans.append(0)
-	
-	#print ans
+		
 	return ans
 
 y_1=preprocess_label("banktestlabel.csv")
@@ -82,15 +81,11 @@ y=preprocess_label("banktrainlabel.csv")
 def preprocess_data(file_name,y_labels):
 	mycsvfile = open(file_name, "rt")
 	csvFile = csv.reader(mycsvfile)
-
-
-
 	header=next(csvFile, None)				#CABECERAS DEL CSV: CATEGORIAS	
 	second_row=next(csvFile, None)				#USAR SEGUNDA FILA PARA SABER QUE TIPO DE VARIABLES TIENE CADA UNA DE LAS CABECERAS	
 	column=[]						#TODOS LOS NOMBRES
 	categorical= []						#CATEGORIAS NO NUMERICAS
 	non_categorical= []					#CATEGORIAS QUE SON NUMERICAS
-
 
 	i=0
 	for index in range(len(second_row)):			#SELECCIONAR LAS CATEGORIAS: categorical y non_categorical
@@ -132,17 +127,17 @@ def preprocess_data(file_name,y_labels):
 	min_ofeachcol=A.min(0)					#MINIMO DE CADA COLUMNA
 	max_ofeachcol=A.max(0)					#MAXIMO DE CADA COLUMNA
 
-	print ("RE-ESCALAMIENTO DE VALORES...")
-	A=(2.0*A - max_ofeachcol - min_ofeachcol)/(max_ofeachcol - min_ofeachcol) #RE-ESCALAMIENTO DE DATA 
-	mean_ofeachcol=A.mean(0)
-	std_ofeachcol=A.std(0)
+# 	print ("RE-ESCALAMIENTO DE VALORES...") #...........................................RE-ESCALAMIENTO DE VALORES................................................
+# 	A=(10.0*A - max_ofeachcol - min_ofeachcol)/(max_ofeachcol - min_ofeachcol) #RE-ESCALAMIENTO DE DATA 
+# 	mean_ofeachcol=A.mean(0)
+# 	std_ofeachcol=A.std(0)
     
-	print ("ESTANDARIZANDO DATOS...")
-	A=(1.0*A-mean_ofeachcol)/std_ofeachcol	
+# 	print ("ESTANDARIZANDO DATOS...") #...........................................ESTANDARIZANDO DATOS................................................
+# 	A=(1.0*A-mean_ofeachcol)/std_ofeachcol	
 
 	i=0
 	X= []
-	
+
 	for each in y_labels:
 		X.append(A[i])
 		#y.append(each)
@@ -156,8 +151,8 @@ X=preprocess_data("banktraindata.csv",y)
 X_1=preprocess_data("banktestdata.csv",y_1)
 
 #----------------------------------------SI SE DESEA MENORAR LA CANTIDAD DE DATA DE ENTRENAMIENTO----------------
-X=X[0:int(len(X)/2)]
-y=y[0:int(len(y)/2)]
+#X=X[0:int(len(X)/2)]
+#y=y[0:int(len(y)/2)]
 
 #-------------------------- COMENZAR A CLASIFICAR: SVM-----------------------------------------------------
 
@@ -166,33 +161,12 @@ print ("ENTRENANDO SVM...")
 #---------------------SELECCION DE CARACTERISTICAS------------------------------------------
 svc = svm.SVC(C=8192, kernel='rbf', degree=2, gamma=0.00048828125, coef0=0.0, shrinking=True, probability=True,tol=0.001, cache_size=200, class_weight=None, verbose=False, max_iter=-1, random_state=None)
 clf=svc	
+
 clf.fit(X, y)
 
-preds = clf.predict_proba(X_1)
+print("TERMINO ENTRENAR")
 
-cantidad_datos=10
-print ("--------------------------RESULTADOS--------------------------")
-preds_buscado=preds[0:cantidad_datos]
-indFor=1
-resp=''
-for pred in preds_buscado: 
-    resp="Prediccion registro N°"+str(indFor)    
-    if pred[0]>pred[1]:
-        resp+=':No suscrito, con una seguridad del: '+str(round(pred[0]*100,2))+"%"        
-    else:
-        resp+=':Suscrito, con una seguridad del: '+str(round(pred[1]*100,2))+"%"    
-    indFor+=1
-    print(resp)
-      
-print ("")
-print ("PRECISION GENERAL PARA LA DATA DE TESTEO INGRESADA")
-print (str(round(clf.score(X_1, y_1)*100,2)),"%")
-print ("")
-
-
-
-
-
+dump(clf, 'SVMmodel.joblib') 
 
 
 

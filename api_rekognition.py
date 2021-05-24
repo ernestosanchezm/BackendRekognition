@@ -16,8 +16,23 @@ from flask import Flask,render_template,request
 from werkzeug.utils import secure_filename
 from werkzeug.datastructures import  FileStorage    
 from entrenandoRF import GenerarModelo
+from Entrenamiento import Entrenar
+from ConexionBD import ExecuteQuery
 import json
 import uuid
+import numpy as np
+from joblib import dump, load
+import csv
+import pandas as pd
+import numpy as np
+import math
+from sklearn import svm
+import time
+from sklearn.pipeline import Pipeline
+from sklearn.feature_selection import SelectFromModel
+from sklearn.svm import LinearSVC
+from sklearn import metrics
+from ggplot import *
 
 app=Flask(__name__)
 app.config['UPLOAD_FOLDER_IMAGENES']="./Imagenes"
@@ -248,13 +263,8 @@ def RegistarDataset(f):
     
 def GetUserForToken(token):    
     resBd=[]
-    try:
-        #CONECCION A MYSQL
-        db = mysql.connect(**configBD)
-        cursor = db.cursor()
-        query = "select * from Users u where u.token="+str(token)
-        cursor.execute(query)
-        resBd=cursor.fetchall()         
+    try:        
+        resBd=ExecuteQuery("select * from Users u where u.token="+str(token))    
         if len(resBd)==1: 
             resBd={       
                 "error":False,
@@ -281,13 +291,8 @@ def GetUserForToken(token):
 
 def GetUserForDni(dni):    
     resBd=None
-    try:
-        #CONECCION A MYSQL
-        db = mysql.connect(**configBD)
-        cursor = db.cursor()
-        query = "select * from Users u where u.dni="+str(dni)
-        cursor.execute(query)
-        resBd=cursor.fetchall()         
+    try:       
+        resBd=ExecuteQuery("select * from Users u where u.dni="+str(dni))      
         
         if len(resBd)==1: 
             resBd={       
@@ -427,6 +432,63 @@ def RegistroDataset():
             'statusCode': 200,
             'body':  response       
         }      
+    
+@app.route("/consultarPrediccion",methods=['POST'])
+def ConsultarPrediccion():    
+    if request.method=='POST':        
+        token=request.headers.get('token')
+        CONFUSED=str(request.form['CONFUSED'])
+        ANGRY=str(request.form['ANGRY'])
+        DISGUSTED=str(request.form['DISGUSTED'])
+        SAD=str(request.form['SAD'])
+        CALM=str(request.form['CALM'])
+        SURPRISED=str(request.form['SURPRISED'])
+        FEAR=str(request.form['FEAR'])
+        HAPPY=str(request.form['HAPPY'])
+        EDAD=int(request.form['EDAD'])
+        NOMBRE=str(request.form['NOMBRE'])
+        CURSO=str(request.form['CURSO'])
+        SEXO=str(request.form['SEXO'])
+        NOTA=int(request.form['NOTA'])
+        RESULTADO=str(request.form['RESULTADO'])
+        GRADO=int(request.form['GRADO'])
+        BIMESTRE=int(request.form['BIMESTRE'])
+        # VALIDAR TOKEN
+        if ValidarToken(token)==False:
+            return {
+                'statusCode': 400,
+                'body': "Error de Autenticación"
+                } 
+        
+        clf2 = load('SVMmodel.joblib') 
+        
+        if (RESULTADO=='Y'):
+            RESULTADO=1
+        if (RESULTADO=='N'):
+            RESULTADO=0
+            
+            
+        consulta=[[CONFUSED,ANGRY,DISGUSTED,SAD,CALM,SURPRISED,FEAR,HAPPY, EDAD, NOTA,  GRADO,  BIMESTRE,  0,  1,  0,  RESULTADO]]        
+        consulta=np.array(consulta)        
+        preds = clf2.predict_proba(consulta)        
+        cantidad_datos=1     
+        preds_buscado=preds[0:cantidad_datos]
+        indFor=1
+        resp=''
+        for pred in preds_buscado: 
+            resp="Prediccion"
+            if pred[0]>pred[1]:
+                resp+=': MAL RENDIMIENTO, con una seguridad del: '+str(round(pred[0]*100,2))+"%"        
+            else:
+                resp+=': BUEN RENDIMIENTO, con una seguridad del: '+str(round(pred[1]*100,2))+"%"    
+            indFor+=1   
+        
+            
+        #MOSTRAR LA RESPUESTA
+        return {
+            'statusCode': 200,
+            'body':  resp   
+        }     
 
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=8080,debug=True)
